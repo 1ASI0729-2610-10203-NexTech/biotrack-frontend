@@ -7,7 +7,10 @@ export const CorporateMetricAssembler = {
       companyId: payload.companyId,
       sampleSize: payload.sampleSize,
       threshold: payload.threshold,
-      averages: payload.averages,
+      averages: {
+        adherence: payload.averageAdherence,
+        bmi: payload.averageBmi,
+      },
     })
   },
 }
