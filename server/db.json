@@ -738,7 +738,9 @@
       "adminUserId": 3,
       "name": "NexTech Corporation",
       "ruc": "20123456789",
-      "status": "VERIFIED"
+      "status": "VERIFIED",
+      "totalLicenses": 50,
+      "usedLicenses": 3
     },
     {
       "adminUserId": 3,
