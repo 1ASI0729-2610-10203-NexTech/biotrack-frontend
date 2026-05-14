@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import Message from 'primevue/message'
@@ -8,6 +9,7 @@ import Select from 'primevue/select'
 import { usePatientProfileStore } from '../../application/patient-profile.store'
 
 const router = useRouter()
+const toast = useToast()
 const profileStore = usePatientProfileStore()
 const form = reactive({
   weightKg: null,
@@ -28,12 +30,18 @@ const bmiPreview = computed(() => {
   return profileStore.calculateBMI(form.weightKg, form.heightCm)
 })
 const bmiLabel = computed(() => {
-  const value = bmiPreview.value?.value ?? 0
-  if (!value) return 'Pendiente'
-  if (value < 18.5) return 'Bajo peso'
-  if (value < 25) return 'Normal'
-  if (value < 30) return 'Sobrepeso'
-  return 'Obesidad'
+  return profileStore.getBMIStatus(bmiPreview.value?.value)
+})
+const targetWeightPreview = computed(() => {
+  if (!form.weightKg || !profileStore.nutritionalGoal) return null
+  return profileStore.calculateTargetWeight(form.weightKg, profileStore.nutritionalGoal)
+})
+const targetWeightMessage = computed(() => {
+  return profileStore.getWeightGoalMessage(
+    targetWeightPreview.value,
+    form.weightKg,
+    profileStore.nutritionalGoal,
+  )
 })
 const errors = computed(() => Object.values(validation).filter(Boolean))
 const canSave = computed(() => errors.value.length === 0)
@@ -54,7 +62,22 @@ function validate() {
 async function submit() {
   validate()
   if (!canSave.value) return
-  await profileStore.saveHealthData(form)
+  try {
+    await profileStore.saveHealthData({ ...form })
+    toast.add({
+      severity: 'success',
+      summary: 'Datos actualizados',
+      detail: 'Datos de salud actualizados correctamente',
+      life: 3000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Error al guardar',
+      detail: 'No se pudieron guardar los datos',
+      life: 3500,
+    })
+  }
 }
 
 onMounted(async () => {
@@ -78,7 +101,6 @@ onMounted(async () => {
   <section class="bt-profile-form-page">
     <header class="bt-patient-heading">
       <div>
-        <p class="microcopy">US09</p>
         <h1>Registrar datos de salud</h1>
         <p class="text-muted">Actualiza tus datos clinicos con validaciones claras.</p>
       </div>
@@ -104,9 +126,11 @@ onMounted(async () => {
       </form>
       <aside class="bt-dashboard-panel bt-side-insight">
         <h3>IMC estimado</h3>
-        <strong>{{ bmiPreview?.value?.toFixed(2) ?? '--' }}</strong>
+        <strong>{{ bmiPreview?.value?.toFixed(1) ?? '--' }}</strong>
         <span>{{ bmiLabel }}</span>
-        <p>Calorias recomendadas: {{ profileStore.getRecommendedCalories() }} kcal</p>
+        <h3>Peso objetivo recomendado</h3>
+        <strong>{{ targetWeightPreview == null ? '--' : `${targetWeightPreview.toFixed(1)} kg` }}</strong>
+        <p>{{ targetWeightMessage }}</p>
         <ul v-if="errors.length" class="bt-error-list">
           <li v-for="error in errors" :key="error">{{ error }}</li>
         </ul>
